@@ -9,9 +9,10 @@
 	>
 		<div class="p-6">
 			<nav class="mt-8 space-y-4">
-				<!-- <a href="/" class="block font-medium text-gray-700 hover:text-indigo-600">🏠 Home</a> -->
 				
-				<a href="/" class="block font-medium text-gray-700 hover:text-indigo-600">✈️ Air import</a>
+				<a href="/" class="block font-medium text-gray-700 hover:text-indigo-600">🏠 Home</a>
+
+				<a href="/AirImport" class="block font-medium text-gray-700 hover:text-indigo-600">✈️ Air import</a>
 
 				<a href="/LocalSupplier" class="block font-medium text-gray-700 hover:text-indigo-600">
 					🧺 Local Order
@@ -21,7 +22,7 @@
 				</a>
 
 
-				<a href="/products" class="block font-medium text-gray-700 hover:text-indigo-600"
+				<!-- <a href="/products" class="block font-medium text-gray-700 hover:text-indigo-600"
 					>📦 Products</a
 				>
 				<a href="/shipments" class="block font-medium text-gray-700 hover:text-indigo-600"
@@ -29,7 +30,7 @@
 				>
 				<a href="/reports" class="block font-medium text-gray-700 hover:text-indigo-600"
 					>📊 Reports</a
-				>
+				> -->
 				
 				<!-- <a href="/settings" class="block font-medium text-gray-700 hover:text-indigo-600">
 					⚙️ Settings
