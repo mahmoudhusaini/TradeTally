@@ -8,6 +8,7 @@
 	let isTotalValid: boolean = true;
 	let isNameValid: boolean = true;
 	let isQuantityValid: boolean = true;
+	$: product.total = product.costAfterCharge - product.deliveryCharge;
 
 	const dispatch = createEventDispatcher();
 
@@ -18,7 +19,7 @@
 	export function validate(): boolean {
 		isNameValid = !!product.name?.trim();
 		isQuantityValid = !(product.quantity <= 0);
-		isTotalValid = !(product.total <= 0);
+		isTotalValid = !(product.costAfterCharge <= 0);
 
 		return isNameValid && isQuantityValid && isTotalValid;
 	}
@@ -114,7 +115,7 @@
 					id="total"
 					min="0"
 					required
-					bind:value={product.total}
+					bind:value={product.costAfterCharge}
 					class={`block w-full rounded-lg border p-2.5 text-sm text-gray-900
 						  ${
 								isTotalValid
@@ -132,6 +133,7 @@
 				>
 					Delivery Charge:
 				</label>
+
 				<input
 					type="number"
 					id="delivery-charge"
@@ -140,6 +142,13 @@
 					bind:value={product.deliveryCharge}
 					class="block w-full rounded-lg border border-gray-300 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
 				/>
+			</div>
+
+			  <div class="flex flex-col">
+					<label for="calculated-freight-Cost" class="mb-1 text-sm font-medium text-gray-700">
+						Base Cost (No Delivery)
+					</label>
+           	 	<span class="text-lg text-blue-700">{product.total} $</span>
 			</div>
 
 			<div class="flex flex-col items-start">

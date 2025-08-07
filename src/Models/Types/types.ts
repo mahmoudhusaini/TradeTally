@@ -5,13 +5,13 @@ import type { TransportationType } from "../Enums/enums";
 		name: string;
 		image: string;
 		quantity: number;
-		total: number;
+		total: number; // before any charges
 		isLocal: boolean;
 		transportationType: TransportationType;
 		freightCharge: number;
-		costAfterCharge: number;
+		costAfterCharge: number; // 
 		deliveryCharge: number; // only for local prods
-		landedCostPerSingleItem: number;
+		landedCostPerSingleItem: number; // +Money Transfer Fees:
 		isReceived: boolean;
 	};
 

@@ -153,6 +153,8 @@
 
 		if(isFreightCompatible && isCostAfterChargesCompatible) {
 			getExcelContent(containerOrderDetails.supplierName, products, TransportationType.BySea);
+		} else {
+			isSubmitDisabled = true;
 		}
     }
 

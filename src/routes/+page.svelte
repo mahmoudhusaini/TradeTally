@@ -7,25 +7,35 @@
 	import Card from '../Components/Card.svelte';
 	import { TransportationType } from '../Models/Enums/enums';
 	import type { Product } from '../Models/Types/types';
+	import { getExcelContent } from '../Models/Utilities/utilities';
 
 	let isPercentageValid: boolean = true;
 	let isFreightFeesValid: boolean = true;
 	let isWeightValid: boolean = true;
-	let isTotalValid: boolean = true;
+	let isGoodsCostValid: boolean = true;
 
 	type ShipmentDetails = {
+		supplierName: string,
+		isSupplierNameValid: boolean,
 		moneyTransferPercentage: number;
-		freightFees: number;
+		freightFees: number; // Per 1 KG
 		totalWeight: number;
-		totalCost: number;
+		goodsCostOnly: number; 
 	};
 
 	let shipmentDetails: ShipmentDetails = {
-		freightFees: 0,
+		supplierName: '',
+		isSupplierNameValid: true,
 		moneyTransferPercentage: 0,
-		totalCost: 0,
-		totalWeight: 0
+		freightFees: 0,
+		totalWeight: 0, 
+		goodsCostOnly: 0, 
 	};
+	
+	$: overallFreightCharges = shipmentDetails.freightFees * shipmentDetails.totalWeight;
+	$: afterFreightCharges = shipmentDetails.goodsCostOnly + overallFreightCharges;
+	// After Money Transfer Percentage
+	$: afterAddedPercentage = (afterFreightCharges) + ((afterFreightCharges) * (shipmentDetails.moneyTransferPercentage / 100));
 
 	let cards: any[] = []; // holds references to each Card component
 
@@ -81,16 +91,28 @@
 	}
 
 	function validateAndCalculate() {
+
 		let allValid: boolean = true;
 
+		shipmentDetails.isSupplierNameValid = shipmentDetails.supplierName.trim() !== '';
 		isPercentageValid = shipmentDetails.moneyTransferPercentage > 0;
 		isFreightFeesValid = shipmentDetails.freightFees > 0;
 		isWeightValid = shipmentDetails.totalWeight > 0;
-		isTotalValid = shipmentDetails.totalCost > 0;
+		isGoodsCostValid = shipmentDetails.goodsCostOnly > 0;
 
-		if (!isPercentageValid || !isFreightFeesValid || !isWeightValid || !isTotalValid) {
+		if (!isPercentageValid || !isFreightFeesValid || !isWeightValid || !isGoodsCostValid || !shipmentDetails.isSupplierNameValid) {
 			allValid = false;
+			isSubmitDisabled = true;
+			// To Do: Error Toaster or error message makes client know there is something missing
 		}
+
+		if(cards.length < 1) { 
+			allValid = false;
+			isSubmitDisabled = true;
+			// To Do: Error Toaster or error message makes client know there is something missing
+			return;
+		}
+
 
 		for (const card of cards) {
 			if (!card.validate()) {
@@ -100,43 +122,44 @@
 		}
 
 		if (allValid) {
-			products = products.map((product) => {
-				const percentage =
-					product.total +
-					product.freightCharge +
-					(product.total + product.freightCharge) * (shipmentDetails.moneyTransferPercentage / 100);
-
-				isSubmitDisabled = false;
-
-				return {
-					...product,
-					percentage: percentage,
-					costPrice: percentage / product.quantity
-				};
-			});
+			isSubmitDisabled = false;
 		}
 	}
 
 	async function submit() {
-		const totalWeightCost: number = shipmentDetails.totalWeight * shipmentDetails.freightFees;
-		let shipmentOverall = (shipmentDetails.totalCost + totalWeightCost) + ((shipmentDetails.totalCost + totalWeightCost) * (shipmentDetails.moneyTransferPercentage / 100));
+		
 
-		let freightCostPerItem: number = 0;
-		let totalPerItem: number = 0;
+		console.log(`Supposed to be: ${overallFreightCharges} and` + afterAddedPercentage);
 
-		for (const product of products) {
-			freightCostPerItem += product.freightCharge;
-			totalPerItem += product.costAfterCharge;
-		}
 
-		isFreightFeesMatching = totalWeightCost === freightCostPerItem;
-		isShipmentCostMatching = totalPerItem === shipmentOverall;
+		let freightChargePerItem: number = 0;
+		let totalPerItemAfterPercentage: number = 0;
+
+		products = products.map((product) => {
+
+				const afterCharges =
+					product.total +
+					product.freightCharge +
+					(product.total + product.freightCharge) * (shipmentDetails.moneyTransferPercentage / 100);
+
+
+				freightChargePerItem += product.freightCharge;
+				totalPerItemAfterPercentage += afterCharges;	
+
+				return {
+					...product,
+					costAfterCharge: afterCharges,
+					landedCostPerSingleItem: afterCharges / product.quantity
+				};
+			});
+
+
+		isFreightFeesMatching = overallFreightCharges === freightChargePerItem;
+		isShipmentCostMatching = afterAddedPercentage === totalPerItemAfterPercentage;
 		
 		if (isFreightFeesMatching && isShipmentCostMatching) {
-			// To do
-			console.log(totalPerItem);
-			console.log(totalWeightCost);
-			console.log(shipmentDetails.totalCost);
+			getExcelContent(shipmentDetails.supplierName, products, TransportationType.ByAir);
+
 		} else {
 			isSubmitDisabled = true;
 		}
@@ -193,6 +216,30 @@
 	<h4 class="mb-4 text-xl font-semibold text-gray-800">Shipment Details</h4>
 
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+
+
+		 <div class="flex flex-col">
+			<label for="supplier-name" class="mb-1 text-sm font-medium text-gray-700">
+				Supplier Name
+			</label>
+			<input
+				bind:value={shipmentDetails.supplierName}
+				id="supplier-name"
+				type="text"
+				placeholder="e.g. AY COMPUTERS"
+				class={shipmentDetails.isSupplierNameValid
+					? 'rounded-lg border border-gray-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500'
+					: 'rounded-lg border border-red-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-red-200'}
+				required
+				min="0"
+			/>
+
+			{#if !shipmentDetails.isSupplierNameValid}
+				<span class="mt-1 text-sm text-red-500">Field is Required</span>
+			{/if}
+		</div>
+
+
 		<div class="flex flex-col">
 			<label for="transfer" class="mb-1 text-sm font-medium text-gray-700">
 				Money Transfer Percentage (%)
@@ -255,25 +302,47 @@
 				<span class="mt-1 text-sm text-red-500">Field is Required</span>
 			{/if}
 		</div>
+
 		<div class="flex flex-col">
 			<label for="total-amount" class="mb-1 text-sm font-medium text-gray-700">
-				Total Cost of Shipment (USD)
+				Base Cost of Goods (USD)
 			</label>
 			<input
-				bind:value={shipmentDetails.totalCost}
+				bind:value={shipmentDetails.goodsCostOnly}
 				id="total-cost"
 				type="number"
 				placeholder="e.g. 4500"
-				class={isTotalValid
+				class={isGoodsCostValid
 					? 'rounded-lg border border-gray-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500'
 					: 'rounded-lg border border-red-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-red-200'}
 				required
 				min="0"
 			/>
 
-			{#if !isTotalValid}
+			{#if !isGoodsCostValid}
 				<span class="mt-1 text-sm text-red-500">Field is Required</span>
 			{/if}
+		</div>
+
+		 <div class="flex flex-col">
+			<label for="calculated-freight-Cost" class="mb-1 text-sm font-medium text-gray-700">
+				 Freight Fees
+			</label>
+            <span class="text-lg text-blue-700">{overallFreightCharges} $</span>
+		</div>
+
+		<div class="flex flex-col">
+			<label for="calculated-freight-Cost" class="mb-1 text-sm font-medium text-gray-700">
+				 +Freight Charges
+			</label>
+            <span class="text-lg text-blue-700">{afterFreightCharges} $</span>
+		</div>
+
+		<div class="flex flex-col">
+			<label for="calculated-freight-Cost" class="mb-1 text-sm font-medium text-gray-700">
+				 +Money Transfer Fees:
+			</label>
+            <span class="text-lg text-blue-700">{afterAddedPercentage} $</span>
 		</div>
 	</div>
 

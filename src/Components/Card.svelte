@@ -14,7 +14,6 @@
 	let isNameValid = true;
 	let isQuantityValid = true;
 	let isTotalValid = true;
-
 	
 
 	export function validate(): boolean {
@@ -84,6 +83,7 @@
 		</div>
 
 		<div class="flex flex-col items-start">
+			<!-- Total of the item but not per 1 piece price gross-->
             <label for="total" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Total (No Freight):</label>
             <input type="number" id="total" min="0" required bind:value={product.total}
 			class={`border text-gray-900 text-sm rounded-lg block w-full p-2.5
@@ -100,7 +100,7 @@
 
         <div class="flex flex-col items-start">
             <label for="transfer-fees" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">+Money Transfer Fees:</label>
-			<span class="text-lg text-blue-700">{product.costAfterCharge} $</span>
+			<span class="text-lg text-blue-700">{product.costAfterCharge} $</span> 
         </div>
 
 		<div class="flex flex-col items-start">

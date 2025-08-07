@@ -1,18 +1,18 @@
 <script lang="ts">
-
+	import Actions from "../../Components/Actions.svelte";
 	import ProductLocal from "../../Components/ProductLocal.svelte";
 	import { TransportationType } from "../../Models/Enums/enums";
 	import type { Product } from "../../Models/Types/types";
 	import { getExcelContent } from "../../Models/Utilities/utilities";
+    
 
-
-	type LocalOrderDetails = {
+    type LocalOrderDetails = {
 		supplierName: string,
 		isSupplierNameValid: boolean,
 		deliveryCharges: number;
 		isDeliveryChargesValid: boolean;
-		totalCost: number;
-		isTotalCostValid: boolean;
+		totalAfterDelivery: number;
+		istotalAfterDeliveryValid: boolean;
 	};
 
 	let localOrderDetails: LocalOrderDetails = {
@@ -20,23 +20,25 @@
 		isSupplierNameValid: true,
 		deliveryCharges: 0,
 		isDeliveryChargesValid: true,
-		totalCost: 0,
-		isTotalCostValid: true
+		totalAfterDelivery: 0,
+		istotalAfterDeliveryValid: true
 	};
-	let cards: any[] = []; // holds references to each Card component
-	$: noDeliveryCost = localOrderDetails.totalCost - localOrderDetails.deliveryCharges;
 
-	// Table Supplier id-name-Enum:local-orderCounter
+	// For Order Details
 
-	let isSubmitDisabled: boolean = true;
-    let counter: number = 0;
+	$: baseNoDeliveryCost = localOrderDetails.totalAfterDelivery - localOrderDetails.deliveryCharges;
+
+
     let products: Product[] = [];
+	let cards: any[] = [];
+    let counter: number = 0;
 
-	let isTotalMatching: boolean = true;
+	let isTotalAfterDeliveryMatching: boolean = true;
 	let isDeliveryChargeMatching: boolean = true;
 
+    let isSubmitDisabled: boolean = true;
 
-	function addNewProduct() {
+    function addNewProduct() {
         let newProduct: Product = {
             id: counter++,
 			name: '',
@@ -45,9 +47,9 @@
 			total: 0,
 			isLocal: true,
 			transportationType: TransportationType.Local,
-			freightCharge: 0,
-			costAfterCharge: 0,
-			deliveryCharge: 0,
+			freightCharge: 0, 
+			costAfterCharge: 0, 
+			deliveryCharge: 0, 
 			landedCostPerSingleItem: 0,
 			isReceived: false
         };
@@ -55,44 +57,66 @@
         products = [...products, newProduct]
     }
 
-	function validateAndCalculate() {
 
-		let allValid: boolean = true;
+    function validate() {
+        
+		let continueToExport: boolean = true;
+
+		if(cards.length < 1) { 
+			continueToExport = false;
+			isSubmitDisabled = true;
+			// To Do: Error Toaster or error message makes client know there is something missing
+			return;
+		}
 
 		localOrderDetails.isSupplierNameValid = localOrderDetails.supplierName.trim() !== '';
 		localOrderDetails.isDeliveryChargesValid = localOrderDetails.deliveryCharges >= 0;
-		localOrderDetails.isTotalCostValid = localOrderDetails.totalCost > 0;
+		localOrderDetails.istotalAfterDeliveryValid = localOrderDetails.totalAfterDelivery > 0;
 
-		if(!localOrderDetails.isSupplierNameValid || !localOrderDetails.isDeliveryChargesValid || !localOrderDetails.isTotalCostValid) {
-			allValid = false;
-			// isSubmitDisabled = true;
+		if(!localOrderDetails.isSupplierNameValid ||
+		   !localOrderDetails.isDeliveryChargesValid ||
+		   !localOrderDetails.istotalAfterDeliveryValid) {
+
+			continueToExport = false;
+			isSubmitDisabled = true;
 		}
 
 		for (const card of cards) {
 			if(!card.validate()) {
-				allValid = false;
+				continueToExport = false;
 				isSubmitDisabled = true;
 			}
 		}
 
-		if(cards.length < 1) { 
-			allValid = false;
-		}
+		if(continueToExport) {
+			// products = products.map((product) => {
+			// 	const percentage =
+			// 		product.total +
+			// 		product.freightCharge +
+			// 		(product.total + product.freightCharge) ;
 
-		if(allValid) {
+			// 	return {
+			// 		...product,
+			// 		costAfterCharge: percentage,
+			// 		landedCostPerSingleItem: percentage / product.quantity
+			// 	};
+			// });
+
+			// To Do: Can Export Csv Now
+
 			isSubmitDisabled = false;
 		}
 
-	}
+    }
 
 	function submit() {
 
-		let totalDeliveryCharge: number = 0;
-		let totalAmount: number =  0;
-		
+		let totalDeliveryCharge: number = 0; 
+		let totalCostAfterDelivery: number = 0; // Amount Due
+
 		products = products.map((product) => {
 			totalDeliveryCharge += product.deliveryCharge;
-			totalAmount += product.total; // includes delivery
+			totalCostAfterDelivery += product.costAfterCharge; 
 
 			return {
 				...product,
@@ -100,30 +124,30 @@
 			};
 		});
 		
-
 		isDeliveryChargeMatching = localOrderDetails.deliveryCharges === totalDeliveryCharge;
-		isTotalMatching = localOrderDetails.totalCost === totalAmount;
+		isTotalAfterDeliveryMatching = localOrderDetails.totalAfterDelivery == totalCostAfterDelivery;
 		
-		if(isDeliveryChargeMatching && isTotalMatching) {
-
+		if(isTotalAfterDeliveryMatching && isDeliveryChargeMatching) {
 			getExcelContent(localOrderDetails.supplierName, products, TransportationType.Local);
-
+		} else {
+			isSubmitDisabled = true;
 		}
+    }
 
-	}
-
-
-	function removeProduct(id: number): void {
-		const index = products.findIndex((p) => p.id === id); 
-
-		if (index !== -1) {
-			products.splice(index, 1);
-			cards.splice(index, 1); 
-			products = [...products];
-		}
-	}
 	
+	async function removeProduct(productId: number) {
+
+		const indexInArray = products.findIndex((p) => p.id == productId);
+
+		if(indexInArray !== -1) {
+			products.splice(indexInArray, 1);
+			cards.splice(indexInArray, 1);
+			products = [...products]
+		}
+	}
+
 </script>
+
 
 <!-- Widgets Grid -->
 <div class="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -146,42 +170,19 @@
 	</div>
 </div>
 
-<!-- Action Panel -->
-<div class="mb-6 rounded-lg bg-white p-6 shadow">
-	<h4 class="mb-4 text-xl font-semibold text-gray-800">Actions</h4>
-	<div class="flex flex-wrap gap-4">
-		<button
-			on:click={addNewProduct}
-			class="cursor-pointer rounded-lg bg-blue-500 px-5 py-2.5 text-white transition hover:bg-blue-700"
-		>
-			+ New Product
-		</button>
 
-		<button
-			class="cursor-pointer rounded-lg bg-blue-500 px-5 py-2.5 text-white transition"
-			on:click={validateAndCalculate}
-		>
-			Validate and Calculate
-		</button>
+<Actions addNewProduct={addNewProduct} validateAndCalculate={validate} submit={submit} isSubmitDisabled={isSubmitDisabled} />
 
-		<button
-			class="rounded-lg bg-green-600 px-5 py-2.5 text-white transition
-					  	{isSubmitDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}"
-			disabled={isSubmitDisabled}
-			on:click={submit}
-		>
-			Export CSV
-		</button>
-	</div>
-</div>
+
 
 <!-- Shipment Details -->
 <div class="rounded-lg bg-white p-6 shadow">
 	<h4 class="mb-4 text-xl font-semibold text-gray-800">Shipment Details</h4>
 
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-		
-		<div class="flex flex-col">
+
+
+        <div class="flex flex-col">
 			<label for="supplier-name" class="mb-1 text-sm font-medium text-gray-700">
 				Supplier Name
 			</label>
@@ -202,36 +203,39 @@
 			{/if}
 		</div>
 
+
+	
+
 		<div class="flex flex-col">
-			<label for="total-cost" class="mb-1 text-sm font-medium text-gray-700">
-				Base Products Cost (USD)
+			<label for="total-products-cost" class="mb-1 text-sm font-medium text-gray-700">
+				Total After Delivery (USD) 
 			</label>
 			<input
-				bind:value={localOrderDetails.totalCost}
-				id="total-cost"
+				bind:value={localOrderDetails.totalAfterDelivery}
+				id="total-products-cost"
 				type="number"
 				placeholder="e.g. 4500"
-				class={localOrderDetails.isTotalCostValid
+				class={localOrderDetails.istotalAfterDeliveryValid
 					? 'rounded-lg border border-gray-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500'
 					: 'rounded-lg border border-red-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-red-200'}
 				required
 				min="0"
 			/>
 
-			{#if !localOrderDetails.isTotalCostValid}
+			{#if !localOrderDetails.istotalAfterDeliveryValid}
 				<span class="mt-1 text-sm text-red-500">Field is Required</span>
 			{/if}
 		</div>
 
 		<div class="flex flex-col">
-			<label for="delivery-charges" class="mb-1 text-sm font-medium text-gray-700">
-				Delivery Charges (USD)
+			<label for="total-products-cost" class="mb-1 text-sm font-medium text-gray-700">
+				Delivery Charges (USD) 
 			</label>
 			<input
 				bind:value={localOrderDetails.deliveryCharges}
-				id="delivery-charges"
+				id="total-products-cost"
 				type="number"
-				placeholder="e.g. 3"
+				placeholder="e.g. 4500"
 				class={localOrderDetails.isDeliveryChargesValid
 					? 'rounded-lg border border-gray-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500'
 					: 'rounded-lg border border-red-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-red-200'}
@@ -244,27 +248,25 @@
 			{/if}
 		</div>
 
-		<div class="flex flex-col">
-				<label for="no-delivery-cost" class="mb-1 text-sm font-medium text-gray-700">
-					Total After Delivery (USD):
-				</label>
-			{#if localOrderDetails.isDeliveryChargesValid && localOrderDetails.isTotalCostValid}
-				<span id="no-delivery-cost" class="mt-1 text-lg text-blue-700">
-					    {noDeliveryCost}
-				</span>
-			{/if}
+        <div class="flex flex-col">
+			<label for="calculated-freight-Cost" class="mb-1 text-sm font-medium text-gray-700">
+				Base Cost (No Delivery)
+			</label>
+            <span class="text-lg text-blue-700">{baseNoDeliveryCost} $</span>
 		</div>
+
+
+
 	</div>
 
-
-	<div class="grid grid-cols-1 gap-6">
-		{#if !isDeliveryChargeMatching}
+		<div class="grid grid-cols-1 gap-6">
+		{#if !isTotalAfterDeliveryMatching}
 			<span class="mt-1 text-lg text-red-500">
-				Total Product Delivery Charge Doesn't Align With The Order Delivery.
+				Delivery Fees Doesn't Align With The Specified Order Fees.
 			</span>
 		{/if}
 
-		{#if !isTotalMatching}
+		{#if !isDeliveryChargeMatching}
 			<span class="mt-1 text-lg text-red-500">
 				Total Products Cost Doesn't Align With The Order Total Cost.
 			</span>
@@ -275,13 +277,12 @@
 
 
 
-
 <!-- Products Cards -->
 <div class="my-6 rounded-lg bg-white p-6 shadow">
 	<h4 class="mb-4 text-xl font-semibold text-gray-800">Products</h4>
 	<div class="mx-6 grid grid-cols-1 gap-4 px-5 py-4 md:grid-cols-2">
-		{#each products as product, id (product.id)}
-			<ProductLocal {product} bind:this={cards[id]} on:remove={() => removeProduct(product.id)}/>
-		{/each}
+		{#each products as product, id (product.id) }
+            <ProductLocal {product} bind:this={cards[id]} on:remove={() => removeProduct(product.id)} />
+        {/each}
 	</div>
 </div>
